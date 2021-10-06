@@ -64,6 +64,18 @@ public class ZKUtil {
         return deleteInBatch(zk, tree, batchSize);
     }
 
+    /**
+     * Same as {@link #deleteRecursive(org.apache.zookeeper.ZooKeeper, java.lang.String, int)}
+     * kept here for compatibility with 3.5 clients.
+     *
+     * @since 3.6.1
+     */
+    public static void deleteRecursive(
+        ZooKeeper zk,
+        final String pathRoot) throws InterruptedException, KeeperException {
+        deleteRecursive(zk, pathRoot, 1000);
+    }
+
     private static class BatchedDeleteCbContext {
 
         public Semaphore sem;
@@ -151,7 +163,7 @@ public class ZKUtil {
             return "Read permission is denied on the file '" + file.getAbsolutePath() + "'";
         }
         if (file.isDirectory()) {
-            return "'" + file.getAbsolutePath() + "' is a direcory. it must be a file.";
+            return "'" + file.getAbsolutePath() + "' is a directory. it must be a file.";
         }
         return null;
     }
@@ -181,7 +193,8 @@ public class ZKUtil {
             String node = queue.poll();
             List<String> children = zk.getChildren(node, false);
             for (final String child : children) {
-                final String childPath = node + "/" + child;
+                // Fix IllegalArgumentException when list "/".
+                final String childPath = (node.equals("/") ? "" : node) + "/" + child;
                 queue.add(childPath);
                 tree.add(childPath);
             }

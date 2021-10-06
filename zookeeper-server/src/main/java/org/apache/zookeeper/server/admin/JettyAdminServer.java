@@ -21,11 +21,10 @@ package org.apache.zookeeper.server.admin;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -34,13 +33,17 @@ import org.apache.zookeeper.common.QuorumX509Util;
 import org.apache.zookeeper.common.X509Util;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.eclipse.jetty.http.HttpVersion;
+import org.eclipse.jetty.security.ConstraintMapping;
+import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +86,8 @@ public class JettyAdminServer implements AdminServer {
             Integer.getInteger("zookeeper.admin.idleTimeout", DEFAULT_IDLE_TIMEOUT),
             System.getProperty("zookeeper.admin.commandURL", DEFAULT_COMMAND_URL),
             Integer.getInteger("zookeeper.admin.httpVersion", DEFAULT_HTTP_VERSION),
-            Boolean.getBoolean("zookeeper.admin.portUnification"));
+            Boolean.getBoolean("zookeeper.admin.portUnification"),
+            Boolean.getBoolean("zookeeper.admin.forceHttps"));
     }
 
     public JettyAdminServer(
@@ -92,7 +96,8 @@ public class JettyAdminServer implements AdminServer {
         int timeout,
         String commandUrl,
         int httpVersion,
-        boolean portUnification) throws IOException, GeneralSecurityException {
+        boolean portUnification,
+        boolean forceHttps) throws IOException, GeneralSecurityException {
 
         this.port = port;
         this.idleTimeout = timeout;
@@ -102,7 +107,7 @@ public class JettyAdminServer implements AdminServer {
         server = new Server();
         ServerConnector connector = null;
 
-        if (!portUnification) {
+        if (!portUnification && !forceHttps) {
             connector = new ServerConnector(server);
         } else {
             SecureRequestCustomizer customizer = new SecureRequestCustomizer();
@@ -138,10 +143,16 @@ public class JettyAdminServer implements AdminServer {
                 sslContextFactory.setTrustStore(trustStore);
                 sslContextFactory.setTrustStorePassword(certAuthPassword);
 
-                connector = new ServerConnector(
-                    server,
-                    new UnifiedConnectionFactory(sslContextFactory, HttpVersion.fromVersion(httpVersion).asString()),
-                    new HttpConnectionFactory(config));
+                if (forceHttps) {
+                    connector = new ServerConnector(server,
+                            new SslConnectionFactory(sslContextFactory, HttpVersion.fromVersion(httpVersion).asString()),
+                            new HttpConnectionFactory(config));
+                } else {
+                    connector = new ServerConnector(
+                            server,
+                            new UnifiedConnectionFactory(sslContextFactory, HttpVersion.fromVersion(httpVersion).asString()),
+                            new HttpConnectionFactory(config));
+                }
             }
         }
 
@@ -153,6 +164,7 @@ public class JettyAdminServer implements AdminServer {
 
         ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
         context.setContextPath("/*");
+        constrainTraceMethod(context);
         server.setHandler(context);
 
         context.addServlet(new ServletHolder(new CommandServlet()), commandUrl + "/*");
@@ -256,14 +268,25 @@ public class JettyAdminServer implements AdminServer {
      * Returns a list of URLs to each registered Command.
      */
     private List<String> commandLinks() {
-        List<String> links = new ArrayList<String>();
-        List<String> commands = new ArrayList<String>(Commands.getPrimaryNames());
-        Collections.sort(commands);
-        for (String command : commands) {
-            String url = commandUrl + "/" + command;
-            links.add(String.format("<a href=\"%s\">%s</a>", url, command));
-        }
-        return links;
+        return Commands.getPrimaryNames().stream().sorted().map(command -> String.format("<a href=\"%s\">%s</a>", commandUrl + "/" + command , command)).collect(Collectors.toList());
     }
 
+    /**
+     * Add constraint to a given context to disallow TRACE method
+     * @param ctxHandler the context to modify
+     */
+    private void constrainTraceMethod(ServletContextHandler ctxHandler) {
+        Constraint c = new Constraint();
+        c.setAuthenticate(true);
+
+        ConstraintMapping cmt = new ConstraintMapping();
+        cmt.setConstraint(c);
+        cmt.setMethod("TRACE");
+        cmt.setPathSpec("/*");
+
+        ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
+        securityHandler.setConstraintMappings(new ConstraintMapping[] {cmt});
+
+        ctxHandler.setSecurityHandler(securityHandler);
+    }
 }

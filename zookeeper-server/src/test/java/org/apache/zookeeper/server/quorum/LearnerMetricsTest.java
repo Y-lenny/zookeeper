@@ -30,8 +30,11 @@ import org.apache.zookeeper.metrics.MetricsUtils;
 import org.apache.zookeeper.server.ServerMetrics;
 import org.apache.zookeeper.test.ClientBase;
 import org.hamcrest.Matcher;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class LearnerMetricsTest extends QuorumPeerTestBase {
 
@@ -39,9 +42,22 @@ public class LearnerMetricsTest extends QuorumPeerTestBase {
     private static final int SERVER_COUNT = 4; // 1 observer, 3 participants
     private final QuorumPeerTestBase.MainThread[] mt = new QuorumPeerTestBase.MainThread[SERVER_COUNT];
     private ZooKeeper zk_client;
+    private static boolean bakAsyncSending;
 
-    @Test
-    public void testLearnerMetricsTest() throws Exception {
+    @BeforeAll
+    public static void saveAsyncSendingFlag() {
+        bakAsyncSending = Learner.getAsyncSending();
+    }
+
+    @AfterAll
+    public static void resetAsyncSendingFlag() {
+        Learner.setAsyncSending(bakAsyncSending);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testLearnerMetricsTest(boolean asyncSending) throws Exception {
+        Learner.setAsyncSending(asyncSending);
         ServerMetrics.getMetrics().resetAll();
         ClientBase.setupTestEnv();
 
@@ -109,7 +125,7 @@ public class LearnerMetricsTest extends QuorumPeerTestBase {
         }, TIMEOUT_SECONDS);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         zk_client.close();
         for (int i = 0; i < SERVER_COUNT; i++) {

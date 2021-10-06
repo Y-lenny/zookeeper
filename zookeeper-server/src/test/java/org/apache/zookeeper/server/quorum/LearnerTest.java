@@ -20,9 +20,13 @@ package org.apache.zookeeper.server.quorum;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import java.io.BufferedOutputStream;
@@ -36,18 +40,22 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.BinaryOutputArchive;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.common.X509Exception;
 import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.server.ExitCode;
 import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.test.TestUtils;
 import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.TxnHeader;
-import org.junit.Test;
+import org.apache.zookeeper.util.ServiceUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 public class LearnerTest extends ZKTestCase {
 
@@ -128,19 +136,26 @@ public class LearnerTest extends ZKTestCase {
         }
     }
 
-    @Test(expected = IOException.class)
+    @AfterEach
+    public void cleanup() {
+        System.clearProperty(QuorumPeer.CONFIG_KEY_MULTI_ADDRESS_ENABLED);
+    }
+
+    @Test
     public void connectionRetryTimeoutTest() throws Exception {
-        Learner learner = new TestLearner();
-        learner.self = new QuorumPeer();
-        learner.self.setTickTime(2000);
-        learner.self.setInitLimit(5);
-        learner.self.setSyncLimit(2);
+        assertThrows(IOException.class, () -> {
+            Learner learner = new TestLearner();
+            learner.self = new QuorumPeer();
+            learner.self.setTickTime(2000);
+            learner.self.setInitLimit(5);
+            learner.self.setSyncLimit(2);
 
-        // this addr won't even be used since we fake the Socket.connect
-        InetSocketAddress addr = new InetSocketAddress(1111);
+            // this addr won't even be used since we fake the Socket.connect
+            InetSocketAddress addr = new InetSocketAddress(1111);
 
-        // we expect this to throw an IOException since we're faking socket connect errors every time
-        learner.connectToLeader(new MultipleAddresses(addr), "");
+            // we expect this to throw an IOException since we're faking socket connect errors every time
+            learner.connectToLeader(new MultipleAddresses(addr), "");
+        });
     }
 
     @Test
@@ -172,6 +187,7 @@ public class LearnerTest extends ZKTestCase {
 
     @Test
     public void shouldTryMultipleAddresses() throws Exception {
+        System.setProperty(QuorumPeer.CONFIG_KEY_MULTI_ADDRESS_ENABLED, "true");
         TestLearner learner = new TestLearner();
         learner.self = new QuorumPeer();
         learner.self.setTickTime(2000);
@@ -199,6 +215,7 @@ public class LearnerTest extends ZKTestCase {
 
     @Test
     public void multipleAddressesSomeAreFailing() throws Exception {
+        System.setProperty(QuorumPeer.CONFIG_KEY_MULTI_ADDRESS_ENABLED, "true");
         TestLearner learner = new TestLearner();
         learner.self = new QuorumPeer();
         learner.self.setTickTime(2000);
@@ -226,7 +243,7 @@ public class LearnerTest extends ZKTestCase {
         // we expect this to not throw an IOException since there is a single working address
         learner.connectToLeader(new MultipleAddresses(asList(addrBadA, addrBadB, addrBadC, addrWorking)), "");
 
-        assertEquals("Learner connected to the wrong address", learner.getSocket(), mockSocket);
+        assertEquals(learner.getSocket(), mockSocket, "Learner connected to the wrong address");
     }
 
     @Test
@@ -300,4 +317,51 @@ public class LearnerTest extends ZKTestCase {
         }
     }
 
+    @Test
+    public void truncFailTest() throws Exception {
+        final boolean[] exitProcCalled = {false};
+
+        ServiceUtils.setSystemExitProcedure(new Consumer<Integer>() {
+            @Override
+            public void accept(Integer exitCode) {
+                exitProcCalled[0] = true;
+                assertThat("System.exit() was called with invalid exit code", exitCode, equalTo(ExitCode.QUORUM_PACKET_ERROR.getValue()));
+            }
+        });
+
+        File tmpFile = File.createTempFile("test", ".dir", testData);
+        tmpFile.delete();
+        try {
+            FileTxnSnapLog txnSnapLog = new FileTxnSnapLog(tmpFile, tmpFile);
+            SimpleLearner sl = new SimpleLearner(txnSnapLog);
+            long startZxid = sl.zk.getLastProcessedZxid();
+
+            // Set up bogus streams
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            BinaryOutputArchive oa = BinaryOutputArchive.getArchive(baos);
+            sl.leaderOs = BinaryOutputArchive.getArchive(new ByteArrayOutputStream());
+
+            // make streams and socket do something innocuous
+            sl.bufferedOutput = new BufferedOutputStream(System.out);
+            sl.sock = new Socket();
+
+            // fake messages from the server
+            QuorumPacket qp = new QuorumPacket(Leader.TRUNC, 0, null, null);
+            oa.writeRecord(qp, null);
+
+            // setup the messages to be streamed to follower
+            sl.leaderIs = BinaryInputArchive.getArchive(new ByteArrayInputStream(baos.toByteArray()));
+
+            try {
+                sl.syncWithLeader(3);
+            } catch (EOFException e) {
+            }
+
+            sl.zk.shutdown();
+
+            assertThat("System.exit() should have been called", exitProcCalled[0], is(true));
+        } finally {
+            TestUtils.deleteFileRecursively(tmpFile);
+        }
+    }
 }

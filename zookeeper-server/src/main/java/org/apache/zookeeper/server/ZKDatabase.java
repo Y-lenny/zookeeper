@@ -18,6 +18,7 @@
 
 package org.apache.zookeeper.server;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -89,7 +90,6 @@ public class ZKDatabase {
     public static final String COMMIT_LOG_COUNT = "zookeeper.commitLogCount";
     public static final int DEFAULT_COMMIT_LOG_COUNT = 500;
     public int commitLogCount;
-    protected static int commitLogBuffer = 700;
     protected Queue<Proposal> committedLog = new ArrayDeque<>();
     protected ReentrantReadWriteLock logLock = new ReentrantReadWriteLock();
     private volatile boolean initialized = false;
@@ -507,7 +507,6 @@ public class ZKDatabase {
      * @param path the path being queried
      * @param stat the stat for this path
      * @param watcher the watcher function
-     * @return
      * @throws KeeperException.NoNodeException
      */
     public byte[] getData(String path, Stat stat, Watcher watcher) throws KeeperException.NoNodeException {
@@ -677,7 +676,7 @@ public class ZKDatabase {
             }
             this.dataTree.setData(
                 ZooDefs.CONFIG_NODE,
-                qv.toString().getBytes(),
+                qv.toString().getBytes(UTF_8),
                 -1,
                 qv.getVersion(),
                 Time.currentWallTime());

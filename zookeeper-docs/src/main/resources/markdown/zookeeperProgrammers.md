@@ -1276,8 +1276,11 @@ handle is undefined behavior and should be avoided.
 
 The following list contains configuration properties for the Java client. You can set any
 of these properties using Java system properties. For server properties, please check the
-following reference
-[Server configuration section.](zookeeperAdmin.html#sc_configuration)
+[Server configuration section of the Admin Guide](zookeeperAdmin.html#sc_configuration).
+The ZooKeeper Wiki also has useful pages about
+[ZooKeeper SSL support](https://cwiki.apache.org/confluence/display/ZOOKEEPER/ZooKeeper+SSL+User+Guide), 
+and [SASL authentication for ZooKeeper](https://cwiki.apache.org/confluence/display/ZOOKEEPER/ZooKeeper+and+SASL).
+
 
 * *zookeeper.sasl.client* :
     Set the value to **false** to disable
@@ -1286,6 +1289,13 @@ following reference
 * *zookeeper.sasl.clientconfig* :
     Specifies the context key in the JAAS login file. Default is "Client".
 
+* *zookeeper.server.principal* :
+    Specifies the server principal to be used by the client for authentication, while connecting to the zookeeper
+    server, when Kerberos authentication is enabled. If this configuration is provided, then 
+    the ZooKeeper client will NOT USE any of the following parameters to determine the server principal: 
+    zookeeper.sasl.client.username, zookeeper.sasl.client.canonicalize.hostname, zookeeper.server.realm
+    Note: this config parameter is working only for ZooKeeper 3.5.7+, 3.6.0+
+
 * *zookeeper.sasl.client.username* :
     Traditionally, a principal is divided into three parts: the primary, the instance, and the realm.
     The format of a typical Kerberos V5 principal is primary/instance@REALM.
@@ -1293,6 +1303,13 @@ following reference
     is "zookeeper". Instance part is derived from the server IP. Finally server's principal is
     username/IP@realm, where username is the value of zookeeper.sasl.client.username, IP is
     the server IP, and realm is the value of zookeeper.server.realm.
+
+* *zookeeper.sasl.client.canonicalize.hostname* :
+    Expecting the zookeeper.server.principal parameter is not provided, the ZooKeeper client will try to
+    determine the 'instance' (host) part of the ZooKeeper server principal. First it takes the hostname provided 
+    as the ZooKeeper server connection string. Then it tries to 'canonicalize' the address by getting
+    the fully qualified domain name belonging to the address. You can disable this 'canonicalization'
+    by setting: zookeeper.sasl.client.canonicalize.hostname=false
 
 * *zookeeper.server.realm* :
     Realm part of the server principal. By default it is the client principal realm.
@@ -1303,6 +1320,7 @@ following reference
     this behavior by setting zookeeper.disableAutoWatchReset to **true**.
 
 * *zookeeper.client.secure* :
+    **New in 3.5.5:**
     If you want to connect to the server secure client port, you need to set this property to
     **true**
     on the client. This will connect to server using SSL with specified credentials. Note that
@@ -1320,12 +1338,21 @@ following reference
     on client.
 
 * *zookeeper.ssl.keyStore.location and zookeeper.ssl.keyStore.password* :
+    **New in 3.5.5:**
     Specifies the file path to a JKS containing the local credentials to be used for SSL connections,
     and the password to unlock the file.
 
 * *zookeeper.ssl.trustStore.location and zookeeper.ssl.trustStore.password* :
+    **New in 3.5.5:**
     Specifies the file path to a JKS containing the remote credentials to be used for SSL connections,
     and the password to unlock the file.
+
+* *zookeeper.ssl.keyStore.type* and *zookeeper.ssl.trustStore.type*:
+    **New in 3.5.5:**
+    Specifies the file format of keys/trust store files used to establish TLS connection to the ZooKeeper server. 
+    Values: JKS, PEM, PKCS12 or null (detect by filename). Default: null.
+    **New in 3.6.3, 3.7.0:**
+    The format BCFKS was added.
 
 * *jute.maxbuffer* :
     In the client side, it specifies the maximum size of the incoming data from the server. The default is 0xfffff(1048575) bytes,
@@ -1336,12 +1363,6 @@ following reference
 
 * *zookeeper.kinit* :
     Specifies path to kinit binary. Default is "/usr/bin/kinit".
-
-* *zookeeper.server.principal* :
-    Specifies the server principal to be used by the client for authentication, while connecting to the zookeeper
-    server, when Kerberos authentication is enabled. A couple of ways to specify the server principal can be as
-    "zookeeper.server.principal = **zookeeper/zookeeper.apache.org@APACHE.ORG**" or
-    "zookeeper.server.principal = **zookeeper/zookeeper.apache.org**"
 
 <a name="C+Binding"></a>
 
@@ -1589,7 +1610,7 @@ ZooKeeper users fall into:
 Outside the formal documentation, there're several other sources of
 information for ZooKeeper developers.
 
-* *[API Reference](https://zookeeper.apache.org/doc/current/api/index.html)* :
+* *[API Reference](https://zookeeper.apache.org/doc/current/apidocs/zookeeper-server/index.html)* :
     The complete reference to the ZooKeeper API
 
 * *[ZooKeeper Talk at the Hadoop Summit 2008](https://www.youtube.com/watch?v=rXI9xiesUV8)* :

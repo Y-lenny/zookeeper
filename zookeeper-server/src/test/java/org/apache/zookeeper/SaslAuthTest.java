@@ -18,9 +18,11 @@
 
 package org.apache.zookeeper;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -33,16 +35,17 @@ import org.apache.zookeeper.ClientCnxn.EventThread;
 import org.apache.zookeeper.ClientCnxn.SendThread;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.client.ZooKeeperSaslClient;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class SaslAuthTest extends ClientBase {
 
-    @BeforeClass
+    @BeforeAll
     public static void init() {
         System.setProperty("zookeeper.authProvider.1", "org.apache.zookeeper.server.auth.SASLAuthenticationProvider");
         try {
@@ -83,7 +86,7 @@ public class SaslAuthTest extends ClientBase {
         return jaasContent.toString();
     }
 
-    @AfterClass
+    @AfterAll
     public static void clean() {
         System.clearProperty("zookeeper.authProvider.1");
         System.clearProperty("java.security.auth.login.config");
@@ -187,7 +190,7 @@ public class SaslAuthTest extends ClientBase {
                     // do nothing
                 }
             }
-            assertTrue("ZNode creation is failing continuously after Sasl auth failure.", success);
+            assertTrue(success, "ZNode creation is failing continuously after Sasl auth failure.");
 
         } finally {
             zk.close();
@@ -232,15 +235,22 @@ public class SaslAuthTest extends ClientBase {
             Field eventThreadField = clientCnxn.getClass().getDeclaredField("eventThread");
             eventThreadField.setAccessible(true);
             EventThread eventThread = (EventThread) eventThreadField.get(clientCnxn);
+            ZooKeeperSaslClient zooKeeperSaslClient = clientCnxn.getZooKeeperSaslClient();
+            assertNotNull(zooKeeperSaslClient);
             sendThread.join(CONNECTION_TIMEOUT);
             eventThread.join(CONNECTION_TIMEOUT);
-            assertFalse("SendThread did not shutdown after authFail", sendThread.isAlive());
-            assertFalse("EventThread did not shutdown after authFail", eventThread.isAlive());
+            Field loginField = zooKeeperSaslClient.getClass().getDeclaredField("login");
+            loginField.setAccessible(true);
+            Login login = (Login) loginField.get(zooKeeperSaslClient);
+            // If login is null, this means ZooKeeperSaslClient#shutdown method has been called which in turns
+            // means that Login#shutdown has been called.
+            assertNull(login);
+            assertFalse(sendThread.isAlive(), "SendThread did not shutdown after authFail");
+            assertFalse(eventThread.isAlive(), "EventThread did not shutdown after authFail");
         } finally {
             if (zk != null) {
                 zk.close();
             }
         }
     }
-
 }

@@ -18,7 +18,8 @@
 
 package org.apache.zookeeper.server.quorum;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -30,9 +31,9 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.admin.ZooKeeperAdmin;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.ReconfigTest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 
 public class QuorumPeerMainMultiAddressTest extends QuorumPeerTestBase {
@@ -50,8 +51,9 @@ public class QuorumPeerMainMultiAddressTest extends QuorumPeerTestBase {
 
   private int zNodeId = 0;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
+    System.setProperty(QuorumPeer.CONFIG_KEY_MULTI_ADDRESS_ENABLED, "true");
     ClientBase.setupTestEnv();
     System.setProperty("zookeeper.DigestAuthenticationProvider.superDigest", "super:D/InIHSb7yEEbrWz8b9l71RjZJU="/* password is 'test'*/);
     QuorumPeerConfig.setReconfigEnabled(true);
@@ -60,9 +62,10 @@ public class QuorumPeerMainMultiAddressTest extends QuorumPeerTestBase {
     System.setProperty("zookeeper.jmx.log4j.disable", "true");
   }
 
-  @After
+  @AfterEach
   public void tearDown() throws Exception {
     super.tearDown();
+    System.clearProperty(QuorumPeer.CONFIG_KEY_MULTI_ADDRESS_ENABLED);
     System.clearProperty("zookeeper.jmx.log4j.disable");
   }
 
@@ -230,6 +233,34 @@ public class QuorumPeerMainMultiAddressTest extends QuorumPeerTestBase {
     checkIfZooKeeperQuorumWorks(newQuorumConfig);
   }
 
+  @Test
+  public void shouldFailToReconfigWithMultipleAddressesWhenFeatureIsDisabled() throws Exception {
+    System.setProperty(QuorumPeer.CONFIG_KEY_MULTI_ADDRESS_ENABLED, "false");
+
+    // we have three ZK servers, each server has a single quorumPort and single electionPort registered
+    QuorumServerConfigBuilder initialQuorumConfig = new QuorumServerConfigBuilder(hostName, 3, 1);
+
+    // we launch the three servers, each server should use the same initial config
+    launchServers(Arrays.asList(initialQuorumConfig, initialQuorumConfig, initialQuorumConfig));
+
+    checkIfZooKeeperQuorumWorks(initialQuorumConfig);
+
+    // we create a new config where we add a new address to one of the servers with random available ports
+    QuorumServerConfigBuilder newQuorumConfig = new QuorumServerConfigBuilder(initialQuorumConfig)
+            .addNewServerAddress(FIRST_SERVER);
+
+    ZooKeeperAdmin zkAdmin = newZooKeeperAdmin(initialQuorumConfig);
+
+    // initiating a new incremental reconfig by using the updated ports, expecting exceptions here
+    try {
+      ReconfigTest.reconfig(zkAdmin, newQuorumConfig.buildAsStringList(), null, null, -1);
+      fail("Reconfig succeeded with multiple addresses without exception when the MultiAddress feature is disabled");
+    } catch (KeeperException.BadArgumentsException e) {
+      // do nothing, this is what we expected
+    } catch (Exception e) {
+      fail("Reconfig failed in a wrong way. We expected KeeperException.BadArgumentsException.");
+    }
+  }
 
   private void launchServers(List<QuorumServerConfigBuilder> builders) throws IOException, InterruptedException {
 

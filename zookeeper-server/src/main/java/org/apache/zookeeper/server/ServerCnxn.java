@@ -62,8 +62,6 @@ public abstract class ServerCnxn implements Stats, Watcher {
 
     private Set<Id> authInfo = Collections.newSetFromMap(new ConcurrentHashMap<Id, Boolean>());
 
-    private static final byte[] fourBytes = new byte[4];
-
     /**
      * If the client is of old version, we don't send r-o mode info to it.
      * The reason is that if we would, old C client doesn't read it, which
@@ -101,6 +99,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
         CLOSE_CONNECTION_COMMAND("close_connection_command"),
         CLEAN_UP("clean_up"),
         CONNECTION_MODE_CHANGED("connection_mode_changed"),
+        RENEW_GLOBAL_SESSION_IN_RO_MODE("renew a global session in readonly mode"),
         // Below reasons are NettyServerCnxnFactory only
         CHANNEL_DISCONNECTED("channel disconnected"),
         CHANNEL_CLOSED_EXCEPTION("channel_closed_exception"),
@@ -186,11 +185,11 @@ public abstract class ServerCnxn implements Stats, Watcher {
      *               used to decide which cache (e.g. read response cache,
      *               list of children response cache, ...) object to look up to when applicable.
      */
-    public abstract void sendResponse(ReplyHeader h, Record r, String tag,
+    public abstract int sendResponse(ReplyHeader h, Record r, String tag,
                                       String cacheKey, Stat stat, int opCode) throws IOException;
 
-    public void sendResponse(ReplyHeader h, Record r, String tag) throws IOException {
-        sendResponse(h, r, tag, null, null, -1);
+    public int sendResponse(ReplyHeader h, Record r, String tag) throws IOException {
+        return sendResponse(h, r, tag, null, null, -1);
     }
 
     protected byte[] serializeRecord(Record record) throws IOException {
@@ -298,7 +297,7 @@ public abstract class ServerCnxn implements Stats, Watcher {
 
     protected ZooKeeperSaslServer zooKeeperSaslServer = null;
 
-    protected static class CloseRequestException extends IOException {
+    public static class CloseRequestException extends IOException {
 
         private static final long serialVersionUID = -7854505709816442681L;
         private DisconnectReason reason;
@@ -387,7 +386,6 @@ public abstract class ServerCnxn implements Stats, Watcher {
 
     protected long count;
     protected long totalLatency;
-    protected long requestsProcessedCount;
     protected DisconnectReason disconnectReason = DisconnectReason.UNKNOWN;
 
     public synchronized void resetStats() {
@@ -599,6 +597,13 @@ public abstract class ServerCnxn implements Stats, Watcher {
                 LOG.error("Error closing a command socket ", e);
             }
         }
+    }
+
+    /**
+     * @return true if the server is running, false otherwise.
+     */
+    public boolean isZKServerRunning() {
+        return zkServer != null && zkServer.isRunning();
     }
 
     /**

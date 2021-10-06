@@ -18,11 +18,11 @@
 
 package org.apache.zookeeper.server.admin;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import java.io.IOException;
@@ -37,7 +37,7 @@ import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.quorum.BufferStats;
 import org.apache.zookeeper.test.ClientBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class CommandsTest extends ClientBase {
 
@@ -63,30 +63,20 @@ public class CommandsTest extends ClientBase {
         // This is only true because we're setting cmdName to the primary name
         assertEquals(cmdName, result.remove("command"));
         assertTrue(result.containsKey("error"));
-        assertNull("error: " + result.get("error"), result.remove("error"));
+        assertNull(result.remove("error"), "error: " + result.get("error"));
 
         for (Field field : fields) {
             String k = field.key;
-            assertTrue("Result from command "
-                               + cmdName
-                               + " missing field \""
-                               + k
-                               + "\""
-                               + "\n"
-                               + result, result.containsKey(k));
+            assertTrue(result.containsKey(k),
+                    "Result from command " + cmdName + " missing field \"" + k + "\"" + "\n" + result);
             Class<?> t = field.type;
             Object v = result.remove(k);
-            assertTrue("\""
-                               + k
-                               + "\" field from command "
-                               + cmdName
-                               + " should be of type "
-                               + t
-                               + ", is actually of type "
-                               + v.getClass(), t.isAssignableFrom(v.getClass()));
+            assertTrue(t.isAssignableFrom(v.getClass()),
+                    "\"" + k + "\" field from command " + cmdName
+                            + " should be of type " + t + ", is actually of type " + v.getClass());
         }
 
-        assertTrue("Result from command " + cmdName + " contains extra fields: " + result, result.isEmpty());
+        assertTrue(result.isEmpty(), "Result from command " + cmdName + " contains extra fields: " + result);
     }
 
     public void testCommand(String cmdName, Field... fields) throws IOException, InterruptedException {
@@ -175,6 +165,9 @@ public class CommandsTest extends ClientBase {
                 new Field("last_client_response_size", Integer.class),
                 new Field("max_client_response_size", Integer.class),
                 new Field("min_client_response_size", Integer.class),
+                new Field("auth_failed_count", Long.class),
+                new Field("non_mtls_remote_conn_count", Long.class),
+                new Field("non_mtls_local_conn_count", Long.class),
                 new Field("uptime", Long.class),
                 new Field("global_sessions", Long.class),
                 new Field("local_sessions", Long.class),

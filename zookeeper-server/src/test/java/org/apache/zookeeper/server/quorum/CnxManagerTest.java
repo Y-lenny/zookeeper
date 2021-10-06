@@ -18,12 +18,12 @@
 
 package org.apache.zookeeper.server.quorum;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -58,8 +58,8 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.apache.zookeeper.server.quorum.QuorumPeer.ServerState;
 import org.apache.zookeeper.test.ClientBase;
 import org.apache.zookeeper.test.FLENewEpochTest;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +74,7 @@ public class CnxManagerTest extends ZKTestCase {
     File[] peerTmpdir;
     int[] peerQuorumPort;
     int[] peerClientPort;
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
 
         this.count = 3;
@@ -183,7 +183,7 @@ public class CnxManagerTest extends ZKTestCase {
             }
         }
 
-        assertTrue("Exceeded number of retries", numRetries <= THRESHOLD);
+        assertTrue(numRetries <= THRESHOLD, "Exceeded number of retries");
 
         thread.join(5000);
         if (thread.isAlive()) {
@@ -261,7 +261,7 @@ public class CnxManagerTest extends ZKTestCase {
 
         InetSocketAddress otherAddr = peers.get(2L).electionAddr.getReachableOrOne();
         DataOutputStream dout = new DataOutputStream(sc.socket().getOutputStream());
-        dout.writeLong(QuorumCnxManager.PROTOCOL_VERSION);
+        dout.writeLong(QuorumCnxManager.PROTOCOL_VERSION_V1);
         dout.writeLong(2);
         String addr = otherAddr.getHostString() + ":" + otherAddr.getPort();
         byte[] addr_bytes = addr.getBytes();
@@ -317,9 +317,7 @@ public class CnxManagerTest extends ZKTestCase {
         listener.join(15000); // set wait time, if listener contains bug and thread not stops.
         assertFalse(listener.isAlive());
         assertTrue(errorHappend.get());
-        assertFalse(QuorumPeer.class.getSimpleName()
-                                   + " not stopped after "
-                                   + "listener thread death", listener.isAlive());
+        assertFalse(listener.isAlive(), QuorumPeer.class.getSimpleName() + " not stopped after " + "listener thread death");
     }
 
     /**
@@ -604,7 +602,7 @@ public class CnxManagerTest extends ZKTestCase {
             dout.writeBytes(hostport);
 
             din = new DataInputStream(new ByteArrayInputStream(bos.toByteArray()));
-            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION, din);
+            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION_V1, din);
             fail("long message accepted");
         } catch (InitialMessage.InitialMessageException ex) {
         }
@@ -620,7 +618,7 @@ public class CnxManagerTest extends ZKTestCase {
             dout.writeBytes(hostport);
 
             din = new DataInputStream(new ByteArrayInputStream(bos.toByteArray()));
-            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION, din);
+            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION_V1, din);
             fail("bad hostport accepted");
         } catch (InitialMessage.InitialMessageException ex) {
         }
@@ -637,7 +635,7 @@ public class CnxManagerTest extends ZKTestCase {
 
             // now parse it
             din = new DataInputStream(new ByteArrayInputStream(bos.toByteArray()));
-            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION, din);
+            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION_V1, din);
             assertEquals(Long.valueOf(5), msg.sid);
             assertEquals(Arrays.asList(new InetSocketAddress("10.0.0.2", 3888)), msg.electionAddr);
         } catch (InitialMessage.InitialMessageException ex) {
@@ -656,7 +654,7 @@ public class CnxManagerTest extends ZKTestCase {
 
             // now parse it
             din = new DataInputStream(new ByteArrayInputStream(bos.toByteArray()));
-            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION, din);
+            msg = InitialMessage.parse(QuorumCnxManager.PROTOCOL_VERSION_V2, din);
             assertEquals(Long.valueOf(5), msg.sid);
             assertEquals(Arrays.asList(new InetSocketAddress("1.1.1.1", 9999),
                                        new InetSocketAddress("2.2.2.2", 8888),
@@ -665,6 +663,17 @@ public class CnxManagerTest extends ZKTestCase {
         } catch (InitialMessage.InitialMessageException ex) {
             fail(ex.toString());
         }
+    }
+
+    @Test
+    public void testWildcardAddressRecognition() {
+        assertTrue(QuorumCnxManager.InitialMessage.isWildcardAddress("0.0.0.0"));
+        assertTrue(QuorumCnxManager.InitialMessage.isWildcardAddress("::"));
+        assertFalse(QuorumCnxManager.InitialMessage.isWildcardAddress("some.unresolvable.host.com"));
+        assertFalse(QuorumCnxManager.InitialMessage.isWildcardAddress("127.0.0.1"));
+        assertFalse(QuorumCnxManager.InitialMessage.isWildcardAddress("255.255.255.255"));
+        assertFalse(QuorumCnxManager.InitialMessage.isWildcardAddress("1.2.3.4"));
+        assertFalse(QuorumCnxManager.InitialMessage.isWildcardAddress("www.google.com"));
     }
 
     private String createLongString(int size) {

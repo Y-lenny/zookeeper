@@ -47,6 +47,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
@@ -224,6 +225,15 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
             NettyServerCnxn cnxn = new NettyServerCnxn(channel, zkServer, NettyServerCnxnFactory.this);
             ctx.channel().attr(CONNECTION_ATTRIBUTE).set(cnxn);
 
+            // Check the zkServer assigned to the cnxn is still running,
+            // close it before starting the heavy TLS handshake
+            if (!cnxn.isZKServerRunning()) {
+                LOG.warn("Zookeeper server is not running, close the connection before starting the TLS handshake");
+                ServerMetrics.getMetrics().CNXN_CLOSED_WITHOUT_ZK_SERVER_RUNNING.add(1);
+                channel.close();
+                return;
+            }
+
             if (handshakeThrottlingEnabled) {
                 // Favor to check and throttling even in dual mode which
                 // accepts both secure and insecure connections, since
@@ -248,6 +258,16 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
             } else if (!shouldUsePortUnification) {
                 allChannels.add(ctx.channel());
                 addCnxn(cnxn);
+            }
+            if (ctx.channel().pipeline().get(SslHandler.class) == null) {
+                SocketAddress remoteAddress = cnxn.getChannel().remoteAddress();
+                if (remoteAddress != null
+                        && !((InetSocketAddress) remoteAddress).getAddress().isLoopbackAddress()) {
+                    LOG.trace("NettyChannelHandler channelActive: remote={} local={}", remoteAddress, cnxn.getChannel().localAddress());
+                    zkServer.serverStats().incrementNonMTLSRemoteConnCount();
+                } else {
+                    zkServer.serverStats().incrementNonMTLSLocalConnCount();
+                }
             }
         }
 
@@ -420,7 +440,9 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                         return;
                     }
 
-                    if (KeeperException.Code.OK != authProvider.handleAuthentication(cnxn, null)) {
+                    KeeperException.Code code = authProvider.handleAuthentication(cnxn, null);
+                    if (KeeperException.Code.OK != code) {
+                        zkServer.serverStats().incrementAuthFailedCount();
                         LOG.error("Authentication failed for session 0x{}", Long.toHexString(cnxn.getSessionId()));
                         cnxn.close(ServerCnxn.DisconnectReason.SASL_AUTH_FAILURE);
                         return;
@@ -431,7 +453,9 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
                 allChannels.add(Objects.requireNonNull(futureChannel));
                 addCnxn(cnxn);
             } else {
+                zkServer.serverStats().incrementAuthFailedCount();
                 LOG.error("Unsuccessful handshake with session 0x{}", Long.toHexString(cnxn.getSessionId()));
+                ServerMetrics.getMetrics().UNSUCCESSFUL_HANDSHAKE.add(1);
                 cnxn.close(ServerCnxn.DisconnectReason.FAILED_HANDSHAKE);
             }
         }
@@ -579,6 +603,7 @@ public class NettyServerCnxnFactory extends ServerCnxnFactory {
         this.maxClientCnxns = maxClientCnxns;
         this.secure = secure;
         this.listenBacklog = backlog;
+        LOG.info("configure {} secure: {} on addr {}", this, secure, addr);
     }
 
     /** {@inheritDoc} */
