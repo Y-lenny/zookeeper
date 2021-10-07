@@ -746,6 +746,18 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
         return path.substring(0, lastSlash);
     }
 
+    /**
+     * 在 ZooKeeper 的底层实现中，当服务端处理 setDataRequest 请求时，首先会调用 checkAndIncVersion 方法进行数据版本校验。
+     * ZooKeeper 会从 setDataRequest 请求中获取当前请求的版本 version，同时通过 getRecordForPath 方法获取服务器数据记录 nodeRecord， 从中得到当前服务器上的版本信息 currentversion。
+     * 如果 version 为 -1，表示该请求操作不使用乐观锁，可以忽略版本对比；
+     * 如果 version 不是 -1，那么就对比 version 和 currentversion，
+     * 如果相等，则进行更新操作，否则就会抛出 BadVersionException 异常中断操作。
+     * @param currentVersion 当前版本
+     * @param expectedVersion 期望版本（获取时版本）
+     * @param path（路径）
+     * @return
+     * @throws KeeperException.BadVersionException
+     */
     private static int checkAndIncVersion(int currentVersion, int expectedVersion, String path) throws KeeperException.BadVersionException {
         if (expectedVersion != -1 && expectedVersion != currentVersion) {
             throw new KeeperException.BadVersionException(path);

@@ -117,7 +117,7 @@ public class FinalRequestProcessor implements RequestProcessor {
         if (LOG.isTraceEnabled()) {
             ZooTrace.logRequest(LOG, traceMask, 'E', request, "");
         }
-
+        // 请求处理
         ProcessTxnResult rc = zks.processTxn(request);
 
         // ZOOKEEPER-558:
@@ -365,7 +365,7 @@ public class FinalRequestProcessor implements RequestProcessor {
                 GetDataRequest getDataRequest = new GetDataRequest();
                 ByteBufferInputStream.byteBuffer2Record(request.request, getDataRequest);
                 path = getDataRequest.getPath();
-                rsp = handleGetDataRequest(getDataRequest, cnxn, request.authInfo);
+                rsp = handleGetDataRequest(getDataRequest, cnxn, request.authInfo);// 处理getData方法的请求
                 requestPathMetricsCollector.registerRequest(request.type, path);
                 break;
             }
@@ -633,17 +633,26 @@ public class FinalRequestProcessor implements RequestProcessor {
         return new GetChildrenResponse(children);
     }
 
+    /**
+     * 处理getData请求
+     * @param request 请求参数
+     * @param cnxn 服务上下文
+     * @param authInfo
+     * @return
+     * @throws KeeperException
+     * @throws IOException
+     */
     private Record handleGetDataRequest(Record request, ServerCnxn cnxn, List<Id> authInfo) throws KeeperException, IOException {
         GetDataRequest getDataRequest = (GetDataRequest) request;
         String path = getDataRequest.getPath();
-        DataNode n = zks.getZKDatabase().getNode(path);
+        DataNode n = zks.getZKDatabase().getNode(path);// 获取路径的数据节点
         if (n == null) {
             throw new KeeperException.NoNodeException();
         }
         zks.checkACL(cnxn, zks.getZKDatabase().aclForNode(n), ZooDefs.Perms.READ, authInfo, path, null);
         Stat stat = new Stat();
         byte[] b = zks.getZKDatabase().getData(path, stat, getDataRequest.getWatch() ? cnxn : null);
-        return new GetDataResponse(b, stat);
+        return new GetDataResponse(b, stat);// 封装数据和路径节点状态信息
     }
 
     private boolean closeSession(ServerCnxnFactory serverCnxnFactory, long sessionId) {

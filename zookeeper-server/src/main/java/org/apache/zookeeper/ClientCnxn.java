@@ -117,13 +117,13 @@ public class ClientCnxn {
     private static final int SET_WATCHES_MAX_LENGTH = 128 * 1024;
 
     /* predefined xid's values recognized as special by the server */
-    // -1 means notification(WATCHER_EVENT)
+    // -1 means notification(WATCHER_EVENT) 通知类型
     public static final int NOTIFICATION_XID = -1;
-    // -2 is the xid for pings
+    // -2 is the xid for pings ping类型
     public static final int PING_XID = -2;
-    // -4 is the xid for AuthPacket
+    // -4 is the xid for AuthPacket 认证类型
     public static final int AUTHPACKET_XID = -4;
-    // -8 is the xid for setWatch
+    // -8 is the xid for setWatch 设置监听器类型
     public static final int SET_WATCHES_XID = -8;
 
     static class AuthData {
@@ -143,11 +143,13 @@ public class ClientCnxn {
 
     /**
      * These are the packets that have been sent and are waiting for a response.
+     * 这是缓存已经发送并等待结果的队列
      */
     private final Queue<Packet> pendingQueue = new ArrayDeque<>();
 
     /**
      * These are the packets that need to be sent.
+     * 这是缓存需要被发送的packet包的队列
      */
     private final LinkedBlockingDeque<Packet> outgoingQueue = new LinkedBlockingDeque<Packet>();
 
@@ -182,9 +184,9 @@ public class ClientCnxn {
     private boolean readOnly;
 
     final String chrootPath;
-
+    // 发送线程
     final SendThread sendThread;
-
+    // 事件处理线程
     final EventThread eventThread;
 
     /**
@@ -548,7 +550,7 @@ public class ClientCnxn {
                     if (event == eventOfDeath) {
                         wasKilled = true;
                     } else {
-                        processEvent(event);
+                        processEvent(event);// 事件处理
                     }
                     if (wasKilled) {
                         synchronized (waitingEvents) {
@@ -861,6 +863,11 @@ public class ClientCnxn {
         private Random r = new Random();
         private boolean isFirstConnect = true;
 
+        /**
+         * 处理请求响应结果的方法
+         * @param incomingBuffer 响应字节流
+         * @throws IOException
+         */
         void readResponse(ByteBuffer incomingBuffer) throws IOException {
             ByteBufferInputStream bbis = new ByteBufferInputStream(incomingBuffer);
             BinaryInputArchive bbia = BinaryInputArchive.getArchive(bbis);
@@ -883,12 +890,13 @@ public class ClientCnxn {
                 LOG.debug("Got auth session id: 0x{}", Long.toHexString(sessionId));
                 return;
             }
-            if (replyHdr.getXid() == NOTIFICATION_XID) {
+            if (replyHdr.getXid() == NOTIFICATION_XID) {// 当响应为通知类型时
                 LOG.debug("Got notification session id: 0x{}", Long.toHexString(sessionId));
                 WatcherEvent event = new WatcherEvent();
                 event.deserialize(bbia, "response");
 
                 // convert from a server path to a client path
+                // 把服务端路径更新至客户端
                 if (chrootPath != null) {
                     String serverPath = event.getPath();
                     if (serverPath.compareTo(chrootPath) == 0) {
@@ -905,7 +913,7 @@ public class ClientCnxn {
 
                 WatchedEvent we = new WatchedEvent(event);
                 LOG.debug("Got {} for session id 0x{}", we, Long.toHexString(sessionId));
-                eventThread.queueEvent(we);
+                eventThread.queueEvent(we);// 把监听到事件添加到事件线程维护的队列中
                 return;
             }
 
@@ -951,7 +959,7 @@ public class ClientCnxn {
 
                 LOG.debug("Reading reply session id: 0x{}, packet:: {}", Long.toHexString(sessionId), packet);
             } finally {
-                finishPacket(packet);
+                finishPacket(packet);// 把监听器添加到ZKWatchManager中 Set<clientPath, Set<Watch>>
             }
         }
 
@@ -1168,7 +1176,7 @@ public class ClientCnxn {
             InetSocketAddress serverAddress = null;
             while (state.isAlive()) {
                 try {
-                    if (!clientCnxnSocket.isConnected()) {
+                    if (!clientCnxnSocket.isConnected()) {// 客户端未连接，触发连接
                         // don't re-establish connection if we are closing
                         if (closing) {
                             break;
@@ -1179,11 +1187,11 @@ public class ClientCnxn {
                         } else {
                             serverAddress = hostProvider.next(1000);
                         }
-                        startConnect(serverAddress);
+                        startConnect(serverAddress); // 连接
                         clientCnxnSocket.updateLastSendAndHeard();
                     }
 
-                    if (state.isConnected()) {
+                    if (state.isConnected()) {// 客户端已连接，判断是否需要认证
                         // determine whether we need to send an AuthFailed event.
                         if (zooKeeperSaslClient != null) {
                             boolean sendAuthEvent = false;
@@ -1221,7 +1229,7 @@ public class ClientCnxn {
                         to = connectTimeout - clientCnxnSocket.getIdleRecv();
                     }
 
-                    if (to <= 0) {
+                    if (to <= 0) {// 连接超时
                         String warnInfo = String.format(
                             "Client session timed out, have not heard from server in %dms for session id 0x%s",
                             clientCnxnSocket.getIdleRecv(),
@@ -1247,7 +1255,7 @@ public class ClientCnxn {
                     }
 
                     // If we are in read-only mode, seek for read/write server
-                    if (state == States.CONNECTEDREADONLY) {
+                    if (state == States.CONNECTEDREADONLY) {// 假如是只读模式，那么就查找读写服务
                         long now = Time.currentElapsedTime();
                         int idlePingRwServer = (int) (now - lastPingRwServer);
                         if (idlePingRwServer >= pingRwTimeout) {
@@ -1258,7 +1266,7 @@ public class ClientCnxn {
                         }
                         to = Math.min(to, pingRwTimeout - idlePingRwServer);
                     }
-
+                    // 发送packet包并把packet包添加到等待响应结果队列中
                     clientCnxnSocket.doTransport(to, pendingQueue, ClientCnxn.this);
                 } catch (Throwable e) {
                     if (closing) {
@@ -1632,7 +1640,7 @@ public class ClientCnxn {
         // Note that we do not generate the Xid for the packet yet. It is
         // generated later at send-time, by an implementation of ClientCnxnSocket::doIO(),
         // where the packet is actually sent.
-        packet = new Packet(h, r, request, response, watchRegistration);
+        packet = new Packet(h, r, request, response, watchRegistration); // 封装成packet包进行发送
         packet.cb = cb;
         packet.ctx = ctx;
         packet.clientPath = clientPath;
@@ -1642,18 +1650,18 @@ public class ClientCnxn {
         // 1. synchronize with the final cleanup() in SendThread.run() to avoid race
         // 2. synchronized against each packet. So if a closeSession packet is added,
         // later packet will be notified.
-        synchronized (state) {
+        synchronized (state) {// 判断客户端状态
             if (!state.isAlive() || closing) {
                 conLossPacket(packet);
             } else {
                 // If the client is asking to close the session then
                 // mark as closing
-                if (h.getType() == OpCode.closeSession) {
+                if (h.getType() == OpCode.closeSession) {// 假如请求类型为关闭会话，那么就会把closing标记为true
                     closing = true;
                 }
-                outgoingQueue.add(packet);
+                outgoingQueue.add(packet);// 添加到发送队列中
             }
-        }
+        }// 假如是nio实现就会触发唤醒机制，netty实现则为空方法 ？ 因为netty已经是单独线程池维护
         sendThread.getClientCnxnSocket().packetAdded();
         return packet;
     }

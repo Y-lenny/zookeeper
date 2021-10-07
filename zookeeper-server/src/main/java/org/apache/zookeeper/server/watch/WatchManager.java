@@ -119,6 +119,13 @@ public class WatchManager implements IWatchManager {
         return triggerWatch(path, type, null);
     }
 
+    /**
+     * 触发监听器
+     * @param path znode path
+     * @param type the watch event type
+     * @param supress
+     * @return
+     */
     @Override
     public WatcherOrBitSet triggerWatch(String path, EventType type, WatcherOrBitSet supress) {
         WatchedEvent e = new WatchedEvent(type, KeeperState.SyncConnected, path);
@@ -165,7 +172,7 @@ public class WatchManager implements IWatchManager {
             if (supress != null && supress.contains(w)) {
                 continue;
             }
-            w.process(e);
+            w.process(e);// 调用监听器的{@link Watcher#process(WatchedEvent)}
         }
 
         switch (type) {

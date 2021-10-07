@@ -504,6 +504,7 @@ public class ZKDatabase {
 
     /**
      * get data and stat for a path
+     * 从指定路径中获取数据和状态信息
      * @param path the path being queried
      * @param stat the stat for this path
      * @param watcher the watcher function

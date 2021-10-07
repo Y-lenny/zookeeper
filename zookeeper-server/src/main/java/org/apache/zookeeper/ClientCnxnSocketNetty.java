@@ -285,7 +285,7 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
                 throw new EndOfStreamException("channel for sessionid 0x" + Long.toHexString(sessionId) + " is lost");
             }
             if (head != null) {
-                doWrite(pendingQueue, head, cnxn);
+                doWrite(pendingQueue, head, cnxn);// 发送
             }
         } finally {
             updateNow();
@@ -343,6 +343,7 @@ public class ClientCnxnSocketNetty extends ClientCnxnSocket {
 
     /**
      * doWrite handles writing the packets from outgoingQueue via network to server.
+     * doWrite方法处理从发送队列中提取的packet包通过网络发送到服务端
      */
     private void doWrite(Queue<Packet> pendingQueue, Packet p, ClientCnxn cnxn) {
         updateNow();

@@ -652,6 +652,16 @@ public class DataTree {
         childWatches.triggerWatch("".equals(parentName) ? "/" : parentName, EventType.NodeChildrenChanged);
     }
 
+    /**
+     * 添加数据
+     * @param path
+     * @param data
+     * @param version
+     * @param zxid
+     * @param time
+     * @return
+     * @throws KeeperException.NoNodeException
+     */
     public Stat setData(String path, byte[] data, int version, long zxid, long time) throws KeeperException.NoNodeException {
         Stat s = new Stat();
         DataNode n = nodes.get(path);
@@ -659,7 +669,7 @@ public class DataTree {
             throw new KeeperException.NoNodeException();
         }
         byte[] lastdata = null;
-        synchronized (n) {
+        synchronized (n) {// 安全添加数据
             lastdata = n.data;
             nodes.preChange(path, n);
             n.data = data;
@@ -678,7 +688,7 @@ public class DataTree {
         nodeDataSize.addAndGet(getNodeSize(path, data) - getNodeSize(path, lastdata));
 
         updateWriteStat(path, dataBytes);
-        dataWatches.triggerWatch(path, EventType.NodeDataChanged);
+        dataWatches.triggerWatch(path, EventType.NodeDataChanged);// 触发数据变更监听器
         return s;
     }
 
@@ -715,7 +725,7 @@ public class DataTree {
         }
         synchronized (n) {
             n.copyStat(stat);
-            if (watcher != null) {
+            if (watcher != null) {// 假如监听器不为空则添加监听器到服务侧的IWatchManager中Map<path, Set<Watcher>>
                 dataWatches.addWatch(path, watcher);
             }
             data = n.data;
@@ -949,7 +959,7 @@ public class DataTree {
                 deleteNode(deleteTxn.getPath(), header.getZxid());
                 break;
             case OpCode.reconfig:
-            case OpCode.setData:
+            case OpCode.setData:// 更新数据
                 SetDataTxn setDataTxn = (SetDataTxn) txn;
                 rc.path = setDataTxn.getPath();
                 rc.stat = setData(
