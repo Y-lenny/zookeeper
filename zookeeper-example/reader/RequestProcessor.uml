@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.zookeeper.server.RequestProcessor</OriginalElement>
+  <nodes>
+    <node x="684.0" y="89.0">org.apache.zookeeper.server.PrepRequestProcessor</node>
+    <node x="188.0" y="89.0">org.apache.zookeeper.server.FinalRequestProcessor</node>
+    <node x="1196.0" y="89.0">org.apache.zookeeper.server.SyncRequestProcessor</node>
+    <node x="1424.0" y="89.0">org.apache.zookeeper.server.quorum.AckRequestProcessor</node>
+    <node x="0.0" y="89.0">org.apache.zookeeper.server.quorum.CommitProcessor</node>
+    <node x="700.0" y="0.0">org.apache.zookeeper.server.RequestProcessor</node>
+    <node x="912.0" y="89.0">org.apache.zookeeper.server.quorum.Leader.ToBeAppliedRequestProcessor</node>
+    <node x="424.0" y="89.0">org.apache.zookeeper.server.quorum.ProposalRequestProcessor</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.zookeeper.server.FinalRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="296.0" y="59.0" />
+      <point x="737.7142857142858" y="59.0" />
+      <point x="-50.28571428571422" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.quorum.AckRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="1524.0" y="49.0" />
+      <point x="863.4285714285714" y="49.0" />
+      <point x="75.42857142857144" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.quorum.ProposalRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="544.0" y="69.0" />
+      <point x="762.8571428571429" y="69.0" />
+      <point x="-25.14285714285711" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.quorum.CommitProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="84.0" y="49.0" />
+      <point x="712.5714285714286" y="49.0" />
+      <point x="-75.42857142857144" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.quorum.Leader.ToBeAppliedRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="1044.0" y="69.0" />
+      <point x="813.1428571428572" y="69.0" />
+      <point x="25.142857142857224" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.SyncRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="1300.0" y="59.0" />
+      <point x="838.2857142857143" y="59.0" />
+      <point x="50.285714285714334" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.PrepRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="0.0" y="14.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="0.8503649635036497" x="802.0" y="59.274678111587946" />
+  <SelectedNodes />
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

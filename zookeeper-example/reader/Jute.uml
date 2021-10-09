@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.jute.BinaryInputArchive</OriginalElement>
+  <nodes>
+    <node x="0.0" y="366.0">org.apache.jute.BinaryOutputArchive</node>
+    <node x="24.0" y="287.0">org.apache.jute.OutputArchive</node>
+    <node x="51.0" y="0.0">org.apache.jute.InputArchive</node>
+    <node x="0.0" y="79.0">org.apache.jute.BinaryInputArchive</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.jute.BinaryInputArchive" target="org.apache.jute.InputArchive">
+      <point x="0.0" y="-81.5" />
+      <point x="0.0" y="14.5" />
+    </edge>
+    <edge source="org.apache.jute.BinaryOutputArchive" target="org.apache.jute.OutputArchive">
+      <point x="0.0" y="-37.5" />
+      <point x="0.0" y="14.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="1.0" x="123.0" y="220.5" />
+  <SelectedNodes>
+    <node>org.apache.jute.BinaryInputArchive</node>
+  </SelectedNodes>
+  <Categories>
+    <Category>Fields</Category>
+  </Categories>
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+
