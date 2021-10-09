@@ -73,11 +73,11 @@ public class ProposalRequestProcessor implements RequestProcessor {
             nextProcessor.processRequest(request);
             if (request.getHdr() != null) {
                 // We need to sync and get consensus on any transactions
-                try {
+                try {// 创建proposal并且发送给follower进行投票
                     zks.getLeader().propose(request);
                 } catch (XidRolloverException e) {
                     throw new RequestProcessorException(e.getMessage(), e);
-                }
+                }// 同步到事务日志中并且发送ACK
                 syncProcessor.processRequest(request);
             }
         }

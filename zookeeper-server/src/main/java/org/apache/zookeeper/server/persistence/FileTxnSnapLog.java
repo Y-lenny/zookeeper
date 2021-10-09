@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 事务快照数据综合操作类
  * This is a helper class
  * above the implementations
  * of txnlog and snapshot
@@ -242,7 +243,7 @@ public class FileTxnSnapLog {
      */
     public long restore(DataTree dt, Map<Long, Integer> sessions, PlayBackListener listener) throws IOException {
         long snapLoadingStartTime = Time.currentElapsedTime();
-        long deserializeResult = snapLog.deserialize(dt, sessions);
+        long deserializeResult = snapLog.deserialize(dt, sessions);// 基于快照反序列化数据
         ServerMetrics.getMetrics().STARTUP_SNAP_LOAD_TIME.add(Time.currentElapsedTime() - snapLoadingStartTime);
         FileTxnLog txnLog = new FileTxnLog(dataDir);
         boolean trustEmptyDB;
@@ -318,6 +319,7 @@ public class FileTxnSnapLog {
         DataTree dt,
         Map<Long, Integer> sessions,
         PlayBackListener listener) throws IOException {
+        // 读取log文件中，比内存数据中zxid大的log，快照文件需要快速找到当前有效的proposal
         TxnIterator itr = txnLog.read(dt.lastProcessedZxid + 1);
         long highestZxid = dt.lastProcessedZxid;
         TxnHeader hdr;
@@ -338,6 +340,7 @@ public class FileTxnSnapLog {
                     highestZxid = hdr.getZxid();
                 }
                 try {
+                    // 执行log中对应的操作，恢复数据，到DataTree中
                     processTransaction(hdr, dt, sessions, itr.getTxn());
                     dt.compareDigest(hdr, itr.getTxn(), itr.getDigest());
                     txnLoaded++;

@@ -150,7 +150,7 @@ public class RequestThrottler extends ZooKeeperCriticalThread {
                     while (!killed) {
                         if (dropStaleRequests && request.isStale()) {
                             // Note: this will close the connection
-                            dropRequest(request);
+                            dropRequest(request);// 关闭连接
                             ServerMetrics.getMetrics().STALE_REQUESTS_DROPPED.add(1);
                             request = null;
                             break;

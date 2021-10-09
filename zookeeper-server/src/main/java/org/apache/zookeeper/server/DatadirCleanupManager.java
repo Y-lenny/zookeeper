@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 数据目录清理器
  * This class manages the cleanup of snapshots and corresponding transaction
  * logs by scheduling the auto purge task with the specified
  * 'autopurge.purgeInterval'. It keeps the most recent

@@ -72,7 +72,7 @@ public class BinaryOutputArchive implements OutputArchive {
     /**
      * create our own char encoder to utf8. This is faster
      * then string.getbytes(UTF8).
-     *
+     * 自定义utf8的字符编码器
      * @param s the string to encode into utf8
      * @return utf8 byte sequence.
      */
@@ -81,18 +81,18 @@ public class BinaryOutputArchive implements OutputArchive {
         final int len = s.length();
         for (int i = 0; i < len; i++) {
             if (bb.remaining() < 3) {
-                ByteBuffer n = ByteBuffer.allocate(bb.capacity() << 1);
+                ByteBuffer n = ByteBuffer.allocate(bb.capacity() << 1);// 扩容一倍
                 bb.flip();
                 n.put(bb);
                 bb = n;
             }
             char c = s.charAt(i);
-            if (c < 0x80) {
+            if (c < 0x80) { // 字母一个字节存储
                 bb.put((byte) c);
-            } else if (c < 0x800) {
+            } else if (c < 0x800) { // 特殊字符两个字节存储
                 bb.put((byte) (0xc0 | (c >> 6)));
                 bb.put((byte) (0x80 | (c & 0x3f)));
-            } else {
+            } else { // 汉字三个字节存储
                 bb.put((byte) (0xe0 | (c >> 12)));
                 bb.put((byte) (0x80 | ((c >> 6) & 0x3f)));
                 bb.put((byte) (0x80 | (c & 0x3f)));

@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 快照数据操作类
  * This class implements the snapshot interface.
  * it is responsible for storing, serializing
  * and deserializing the right snapshot.

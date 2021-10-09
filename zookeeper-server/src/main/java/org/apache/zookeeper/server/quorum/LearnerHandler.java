@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
  * There will be an instance of this class created by the Leader for each
  * learner. All communication with a learner is handled by this
  * class.
+ * 这个是Leader为每个learner创建的实例，所有与learner通信都通过这个实例来处理。
  */
 public class LearnerHandler extends ZooKeeperThread {
 
@@ -98,6 +99,7 @@ public class LearnerHandler extends ZooKeeperThread {
 
     /**
      * The packets to be sent to the learner
+     * 这些packets即将要发送给learner
      */
     final LinkedBlockingQueue<QuorumPacket> queuedPackets = new LinkedBlockingQueue<QuorumPacket>();
     private final AtomicLong queuedPacketsSize = new AtomicLong();

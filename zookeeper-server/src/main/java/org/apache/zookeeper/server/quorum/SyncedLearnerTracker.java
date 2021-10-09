@@ -52,7 +52,7 @@ public class SyncedLearnerTracker {
 
     public boolean hasAllQuorums() {
         for (QuorumVerifierAcksetPair qvAckset : qvAcksetPairs) {
-            if (!qvAckset.getQuorumVerifier().containsQuorum(qvAckset.getAckset())) {
+            if (!qvAckset.getQuorumVerifier().containsQuorum(qvAckset.getAckset())) { // 过半判断
                 return false;
             }
         }

@@ -38,7 +38,7 @@ public class SendAckRequestProcessor implements RequestProcessor, Flushable {
     }
 
     public void processRequest(Request si) {
-        if (si.type != OpCode.sync) {
+        if (si.type != OpCode.sync) {// 不是同步操作，进行响应ACK
             QuorumPacket qp = new QuorumPacket(Leader.ACK, si.getHdr().getZxid(), null, null);
             try {
                 si.logLatency(ServerMetrics.getMetrics().PROPOSAL_ACK_CREATION_LATENCY);

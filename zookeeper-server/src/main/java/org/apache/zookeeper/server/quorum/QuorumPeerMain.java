@@ -43,7 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * zookeeper 服务器启动器
  * <h2>Configuration file</h2>
  *
  * When the main() method of this class is used to start the program, the first
@@ -85,6 +85,9 @@ public class QuorumPeerMain {
      * @param args path to the configfile
      */
     public static void main(String[] args) {
+        // Quorum：法定人数，大多数，写一条数据到zk，就需要大多数follower机器都确定写入磁盘后，就可以认为这次写入成功了。
+        // Peer：同辈，表示zookeeper的集群模式，不是master-slave，而是和eureka一样的peer模式，即每台机器都可以成为任意角色，
+        // 只不过在运行时，有的机器角色是leader，有的机器角色是follower，peer架构，每台机器之间角色都能互相切换。
         QuorumPeerMain main = new QuorumPeerMain();
         try {
             main.initializeAndRun(args);
@@ -121,18 +124,18 @@ public class QuorumPeerMain {
     protected void initializeAndRun(String[] args) throws ConfigException, IOException, AdminServerException {
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
-            config.parse(args[0]);
+            config.parse(args[0]); // 1. 解析配置文件
         }
 
         // Start and schedule the the purge task
-        DatadirCleanupManager purgeMgr = new DatadirCleanupManager(
+        DatadirCleanupManager purgeMgr = new DatadirCleanupManager(// 2. 创建文件清理器
             config.getDataDir(),
             config.getDataLogDir(),
             config.getSnapRetainCount(),
             config.getPurgeInterval());
         purgeMgr.start();
 
-        if (args.length == 1 && config.isDistributed()) {
+        if (args.length == 1 && config.isDistributed()) {// 3. 集群判断，并启动服务
             runFromConfig(config);
         } else {
             LOG.warn("Either no config or no quorum defined in config, running in standalone mode");
@@ -161,7 +164,7 @@ public class QuorumPeerMain {
             ServerMetrics.metricsProviderInitialized(metricsProvider);
             ServerCnxnFactory cnxnFactory = null;
             ServerCnxnFactory secureCnxnFactory = null;
-
+            // 3.1 创建服务端组件
             if (config.getClientPortAddress() != null) {
                 cnxnFactory = ServerCnxnFactory.createFactory();
                 cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), config.getClientPortListenBacklog(), false);
@@ -171,8 +174,9 @@ public class QuorumPeerMain {
                 secureCnxnFactory = ServerCnxnFactory.createFactory();
                 secureCnxnFactory.configure(config.getSecureClientPortAddress(), config.getMaxClientCnxns(), config.getClientPortListenBacklog(), true);
             }
-
+            // 3.2 创建{@link QuorumPeerMain}，可以类比为启动了集群模式中的一个实例；并设置一些配置信息
             quorumPeer = getQuorumPeer();
+            // FileTxnSnapLog 磁盘数据管理组件(proposal log日志,内存快照文件)
             quorumPeer.setTxnFactory(new FileTxnSnapLog(config.getDataLogDir(), config.getDataDir()));
             quorumPeer.enableLocalSessions(config.areLocalSessionsEnabled());
             quorumPeer.enableLocalSessionsUpgrading(config.isLocalSessionsUpgradingEnabled());
@@ -220,10 +224,10 @@ public class QuorumPeerMain {
             if (config.jvmPauseMonitorToRun) {
                 quorumPeer.setJvmPauseMonitor(new JvmPauseMonitor(config));
             }
-
+            // 3.3 实例启动（加载数据、启动服务、选举）
             quorumPeer.start();
             ZKAuditProvider.addZKStartStopAuditLog();
-            quorumPeer.join();
+            quorumPeer.join();// main线程把自己阻塞在此, 防止jvm进程关闭，quorumPeer线程自己去执行
         } catch (InterruptedException e) {
             // warn, but generally this is ok
             LOG.warn("Quorum Peer interrupted", e);

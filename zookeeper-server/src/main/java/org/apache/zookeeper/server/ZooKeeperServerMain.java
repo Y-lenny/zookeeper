@@ -58,7 +58,7 @@ public class ZooKeeperServerMain {
 
     /*
      * Start up the ZooKeeper server.
-     *
+     * 启动zk服务端
      * @param args the configfile or the port datadir [ticktime]
      */
     public static void main(String[] args) {

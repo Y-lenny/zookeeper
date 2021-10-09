@@ -73,6 +73,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class has the control logic for the Leader.
+ * 这个类封装了Leader角色的逻辑控制代码
  */
 public class Leader extends LearnerMaster {
 
@@ -145,6 +146,7 @@ public class Leader extends LearnerMaster {
     }
 
     // list of followers that are ready to follow (i.e synced with the leader)
+    // 集群中的 Follower 服务器列表
     private final HashSet<LearnerHandler> forwardingFollowers = new HashSet<LearnerHandler>();
 
     /**
@@ -259,7 +261,7 @@ public class Leader extends LearnerMaster {
     /**
      * Returns true if a quorum in qv is connected and synced with the leader
      * and false otherwise
-     *
+     * 投票逻辑
      * @param qv, a QuorumVerifier
      */
     public boolean isQuorumSynced(QuorumVerifier qv) {
@@ -448,7 +450,7 @@ public class Leader extends LearnerMaster {
             if (!stop.get() && !serverSockets.isEmpty()) {
                 ExecutorService executor = Executors.newFixedThreadPool(serverSockets.size());
                 CountDownLatch latch = new CountDownLatch(serverSockets.size());
-
+                // 为每一个Leander创建一个LearnerCnxAcceptorHandler
                 serverSockets.forEach(serverSocket ->
                         executor.submit(new LearnerCnxAcceptorHandler(serverSocket, latch)));
 
@@ -569,7 +571,7 @@ public class Leader extends LearnerMaster {
 
     /**
      * This method is main function that is called to lead
-     *
+     * 这个方法是主函数调用的，当被选为lead时调用
      * @throws IOException
      * @throws InterruptedException
      */
@@ -587,12 +589,13 @@ public class Leader extends LearnerMaster {
         try {
             self.setZabState(QuorumPeer.ZabState.DISCOVERY);
             self.tick.set(0);
-            zk.loadData();
+            zk.loadData();// 加载数据
 
             leaderStateSummary = new StateSummary(self.getCurrentEpoch(), zk.getLastProcessedZxid());
 
             // Start thread that waits for connection requests from
             // new followers.
+            // 开启一个接收followers连接请求的线程
             cnxAcceptor = new LearnerCnxAcceptor();
             cnxAcceptor.start();
 
@@ -649,7 +652,7 @@ public class Leader extends LearnerMaster {
             // We have to get at least a majority of servers in sync with
             // us. We do this by waiting for the NEWLEADER packet to get
             // acknowledged
-
+            // 我们必须获得至少一半以上服务在与我们同步。
             waitForEpochAck(self.getId(), leaderStateSummary);
             self.setCurrentEpoch(epoch);
             self.setLeaderAddressAndId(self.getQuorumAddress(), self.getId());
@@ -681,7 +684,7 @@ public class Leader extends LearnerMaster {
                 return;
             }
 
-            startZkServer();
+            startZkServer();// 启动zkServer
 
             /**
              * WARNING: do not use this for anything other than QA testing
@@ -1111,7 +1114,7 @@ public class Leader extends LearnerMaster {
 
     /**
      * send a packet to all the followers ready to follow
-     *
+     * 发送一个packet包给到所有的followers准备去做同步操作
      * @param qp
      *                the packet to be sent
      */
@@ -1519,7 +1522,7 @@ public class Leader extends LearnerMaster {
         }
 
         leaderStartTime = Time.currentElapsedTime();
-        zk.startup();
+        zk.startup();// 启动入口
         /*
          * Update the election vote here to ensure that all members of the
          * ensemble report the same vote to new servers that start up and

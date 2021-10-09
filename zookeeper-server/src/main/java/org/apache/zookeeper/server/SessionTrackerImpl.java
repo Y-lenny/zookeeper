@@ -44,9 +44,13 @@ import org.slf4j.LoggerFactory;
 public class SessionTrackerImpl extends ZooKeeperCriticalThread implements SessionTracker {
 
     private static final Logger LOG = LoggerFactory.getLogger(SessionTrackerImpl.class);
-
+    /**
+     * sessionId -> session会话
+     */
     protected final ConcurrentHashMap<Long, SessionImpl> sessionsById = new ConcurrentHashMap<Long, SessionImpl>();
-
+    /**
+     * 会话过期桶集合
+     */
     private final ExpiryQueue<SessionImpl> sessionExpiryQueue;
 
     private final ConcurrentMap<Long, Integer> sessionsWithTimeout;
@@ -153,14 +157,16 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements Sessi
         try {
             while (running) {
                 long waitTime = sessionExpiryQueue.getWaitTime();
-                if (waitTime > 0) {
+                if (waitTime > 0) {//还未到就继续等待
                     Thread.sleep(waitTime);
                     continue;
                 }
 
                 for (SessionImpl s : sessionExpiryQueue.poll()) {
                     ServerMetrics.getMetrics().STALE_SESSIONS_EXPIRED.add(1);
-                    setSessionClosing(s.sessionId);
+                    setSessionClosing(s.sessionId);// 设置关闭状态
+                    // 主要工作就是发起一次会话过期的请求操作。首先通过 close 函数向整个 ZooKeeper 服务器发起一次会话过期的请求操作。
+                    // 接收到请求后，ZooKeeper 就会执行诸如删除该会话的临时节点、发起 Watch 通知等操作。
                     expirer.expire(s);
                 }
             }

@@ -88,6 +88,7 @@ import org.slf4j.LoggerFactory;
  * state of the system. It counts on ZooKeeperServer to update
  * outstandingRequests, so that it can take into account transactions that are
  * in the queue to be applied when generating a transaction.
+ * 请求预处理器
  */
 public class PrepRequestProcessor extends ZooKeeperCriticalThread implements RequestProcessor {
 
@@ -100,7 +101,9 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
     private static boolean failCreate = false;
 
     LinkedBlockingQueue<Request> submittedRequests = new LinkedBlockingQueue<Request>();
-
+    /**
+     * 下一个处理器
+     */
     private final RequestProcessor nextProcessor;
     private final boolean digestEnabled;
     private DigestCalculator digestCalculator;
@@ -151,7 +154,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
                 }
 
                 request.prepStartTime = Time.currentElapsedTime();
-                pRequest(request);
+                pRequest(request);// 预处理
             }
         } catch (Exception e) {
             handleException(this.getName(), e);
@@ -383,9 +386,9 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             addChangeRecord(nodeRecord);
             break;
         case OpCode.setData:
-            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
+            zks.sessionTracker.checkSession(request.sessionId, request.getOwner());// 校验会话是否过期
             SetDataRequest setDataRequest = (SetDataRequest) record;
-            if (deserialize) {
+            if (deserialize) {// 反序列化事务请求信息创建 setDataRequest 请求
                 ByteBufferInputStream.byteBuffer2Record(request.request, setDataRequest);
             }
             path = setDataRequest.getPath();
@@ -393,7 +396,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             nodeRecord = getRecordForPath(path);
             zks.checkACL(request.cnxn, nodeRecord.acl, ZooDefs.Perms.WRITE, request.authInfo, path, null);
             int newVersion = checkAndIncVersion(nodeRecord.stat.getVersion(), setDataRequest.getVersion(), path);
-            request.setTxn(new SetDataTxn(path, setDataRequest.getData(), newVersion));
+            request.setTxn(new SetDataTxn(path, setDataRequest.getData(), newVersion));// 新建事务
             nodeRecord = nodeRecord.duplicate(request.getHdr().getZxid());
             nodeRecord.stat.setVersion(newVersion);
             nodeRecord.stat.setMtime(request.getHdr().getTime());
@@ -402,7 +405,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
             nodeRecord.precalculatedDigest = precalculateDigest(
                     DigestOpCode.UPDATE, path, nodeRecord.data, nodeRecord.stat);
             setTxnDigest(request, nodeRecord.precalculatedDigest);
-            addChangeRecord(nodeRecord);
+            addChangeRecord(nodeRecord);// 放入到处理队列中
             break;
         case OpCode.reconfig:
             if (!QuorumPeerConfig.isReconfigEnabled()) {
@@ -768,7 +771,9 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements Req
     /**
      * This method will be called inside the ProcessRequestThread, which is a
      * singleton, so there will be a single thread calling this code.
-     *
+     * 核心功能：
+     * 1、分辨要处理的请求是否是事务性请求
+     * 2、如果判断出该条请求操作是事务性请求，就会针对该条请求创建请求事务头、事务体、会话检查、ACL 检查和版本检查等一系列的预处理工作。
      * @param request
      */
     protected void pRequest(Request request) throws RequestProcessorException {

@@ -566,6 +566,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 
     /**
      * This is who I think the leader currently is.
+     * 选票：认定谁作为leader
      */
     private volatile Vote currentVote;
 
@@ -1028,27 +1029,27 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         if (!getView().containsKey(myid)) {
             throw new RuntimeException("My id " + myid + " not in the peer list");
         }
-        loadDataBase();
-        startServerCnxnFactory();
+        loadDataBase();// 加载数据
+        startServerCnxnFactory();// 启动服务端组件
         try {
             adminServer.start();
         } catch (AdminServerException e) {
             LOG.warn("Problem starting AdminServer", e);
             System.out.println(e);
         }
-        startLeaderElection();
+        startLeaderElection();// 初始化leader选举,为leader选举做好初始化工作
         startJvmPauseMonitor();
         super.start();
     }
 
     private void loadDataBase() {
         try {
-            zkDb.loadDataBase();
+            zkDb.loadDataBase();// 恢复磁盘文件, 解析log,获取重启之前的zxid
 
             // load the epochs
-            long lastProcessedZxid = zkDb.getDataTree().lastProcessedZxid;
+            long lastProcessedZxid = zkDb.getDataTree().lastProcessedZxid;// 获取leader的版本
             long epochOfZxid = ZxidUtils.getEpochFromZxid(lastProcessedZxid);
-            try {
+            try {// 从文件中读取当前的leader版本
                 currentEpoch = readLongFromFile(CURRENT_EPOCH_FILENAME);
             } catch (FileNotFoundException e) {
                 // pick a reasonable epoch number
@@ -1103,6 +1104,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public synchronized void startLeaderElection() {
         try {
             if (getPeerState() == ServerState.LOOKING) {
+                // 假如状态属于查找中，创建选票（基于服务器 ID（SID）、最新的 ZXID、和当前的服务器 epoch （currentEpoch）这三个参数来生成一个选举标准。）
+                // 初始化自己的投票，投票包含信息
+                // 1. 自己的myid号
+                // 2. zkDatabase中最后的zxid, 也就是当前机器中保存的proposal协议是多少(顺序递增,最大代表最全)
+                // 3. 当前集群leader的版本号,知道自己处在第几代leader管理中
                 currentVote = new Vote(myid, getLastLoggedZxid(), getCurrentEpoch());
             }
         } catch (IOException e) {
@@ -1110,7 +1116,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             re.setStackTrace(e.getStackTrace());
             throw re;
         }
-
+        // 创建选举算法
         this.electionAlg = createElectionAlgorithm(electionType);
     }
 
@@ -1232,18 +1238,18 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         case 2:
             le = new AuthFastLeaderElection(this, true);
             break;
-        case 3:
+        case 3:// 用于zk节点通信的网络组件
             QuorumCnxManager qcm = createCnxnManager();
             QuorumCnxManager oldQcm = qcmRef.getAndSet(qcm);
             if (oldQcm != null) {
                 LOG.warn("Clobbering already-set QuorumCnxManager (restarting leader election?)");
                 oldQcm.halt();
-            }
+            }// 实例化 Listener 对象用于监听 Leader 选举端口
             QuorumCnxManager.Listener listener = qcm.listener;
             if (listener != null) {
-                listener.start();
-                FastLeaderElection fle = new FastLeaderElection(this, qcm);
-                fle.start();
+                listener.start();// 启动zk连接监听器, 用来监听其他zk机器发送过来的请求,通过这个组件也可以给其他机器发送网络请求
+                FastLeaderElection fle = new FastLeaderElection(this, qcm);// 创建出zk节点间的选举对象
+                fle.start();// 开始选举
                 le = fle;
             } else {
                 LOG.error("Null listener when initializing cnx manager");
@@ -1323,9 +1329,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             /*
              * Main loop
              */
-            while (running) {
+            while (running) {// 通过当前的状态，做对应的工作
                 switch (getPeerState()) {
-                case LOOKING:
+                case LOOKING:// 选举
                     LOG.info("LOOKING");
                     ServerMetrics.getMetrics().LOOKING_COUNT.add(1);
 
@@ -1379,7 +1385,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                             if (shuttingDownLE) {
                                 shuttingDownLE = false;
                                 startLeaderElection();
-                            }
+                            }// 开始进行选举, 并保存选举的结果
                             setCurrentVote(makeLEStrategy().lookForLeader());
                         } catch (Exception e) {
                             LOG.warn("Unexpected exception", e);
@@ -1387,7 +1393,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         }
                     }
                     break;
-                case OBSERVING:
+                case OBSERVING:// 作为 observing 应该做的后续工作
                     try {
                         LOG.info("OBSERVING");
                         setObserver(makeObserver(logFactory));
@@ -1406,11 +1412,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         }
                     }
                     break;
-                case FOLLOWING:
+                case FOLLOWING:// 作为 following 应该做的后续工作
                     try {
                         LOG.info("FOLLOWING");
                         setFollower(makeFollower(logFactory));
-                        follower.followLeader();
+                        follower.followLeader();// 数据同步
                     } catch (Exception e) {
                         LOG.warn("Unexpected exception", e);
                     } finally {
@@ -1419,7 +1425,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         updateServerState();
                     }
                     break;
-                case LEADING:
+                case LEADING:// 作为 leading 应该做的后续工作
                     LOG.info("LEADING");
                     try {
                         setLeader(makeLeader(logFactory));
@@ -1684,6 +1690,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 
     /**
      * Get the number of ticks that the initial synchronization phase can take
+     * 获取能花费在同步阶段所能使用的ticks数量
      */
     public int getInitLimit() {
         return initLimit;

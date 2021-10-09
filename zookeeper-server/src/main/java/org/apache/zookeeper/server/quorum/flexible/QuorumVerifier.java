@@ -32,7 +32,7 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 public interface QuorumVerifier {
 
     long getWeight(long id);
-    boolean containsQuorum(Set<Long> set);
+    boolean containsQuorum(Set<Long> set); // 过半判断
     long getVersion();
     void setVersion(long ver);
     Map<Long, QuorumServer> getAllMembers();

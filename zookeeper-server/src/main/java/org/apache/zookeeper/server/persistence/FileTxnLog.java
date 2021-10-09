@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 事务日志操作类
  * This class implements the TxnLog interface. It provides api's
  * to access the txnlogs and add entries to it.
  * <p>
@@ -344,6 +345,7 @@ public class FileTxnLog implements TxnLog {
 
     /**
      * get the last zxid that was logged in the transaction logs
+     * 获取记录在事务日志最新的zxid
      * @return the last zxid logged in the transaction logs
      */
     public long getLastLoggedZxid() {
@@ -356,7 +358,7 @@ public class FileTxnLog implements TxnLog {
         TxnIterator itr = null;
         try {
             FileTxnLog txn = new FileTxnLog(logDir);
-            itr = txn.read(maxLog);
+            itr = txn.read(maxLog);// 获取最新的需要恢复事务日志迭代器
             while (true) {
                 if (!itr.next()) {
                     break;
@@ -627,6 +629,7 @@ public class FileTxnLog implements TxnLog {
         PositionInputStream inputStream = null;
         //stored files is the list of files greater than
         //the zxid we are looking for.
+        // 存储的文件列表都是大于zxid的文件。
         private ArrayList<File> storedFiles;
 
         /**
@@ -642,7 +645,7 @@ public class FileTxnLog implements TxnLog {
         public FileTxnIterator(File logDir, long zxid, boolean fastForward) throws IOException {
             this.logDir = logDir;
             this.zxid = zxid;
-            init();
+            init();// 初始化需要遍历恢复的文件
 
             if (fastForward && hdr != null) {
                 while (hdr.getZxid() < zxid) {

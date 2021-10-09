@@ -481,6 +481,7 @@ public class Learner {
     /**
      * Finally, synchronize our history with the Leader (if Follower)
      * or the LearnerMaster (if Observer).
+     * 同步Leader数据
      * @param newLeaderZxid
      * @throws IOException
      * @throws InterruptedException
@@ -499,7 +500,7 @@ public class Learner {
         readPacket(qp);
         Deque<Long> packetsCommitted = new ArrayDeque<>();
         Deque<PacketInFlight> packetsNotCommitted = new ArrayDeque<>();
-        synchronized (zk) {
+        synchronized (zk) {// 判断同步类型
             if (qp.getType() == Leader.DIFF) {
                 LOG.info("Getting a diff from the leader 0x{}", Long.toHexString(qp.getZxid()));
                 self.setSyncMode(QuorumPeer.SyncMode.DIFF);

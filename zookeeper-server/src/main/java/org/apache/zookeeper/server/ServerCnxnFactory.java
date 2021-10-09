@@ -157,6 +157,11 @@ public abstract class ServerCnxnFactory {
 
     public abstract void closeAll(ServerCnxn.DisconnectReason reason);
 
+    /**
+     * 根据{@link #ZOOKEEPER_SERVER_CNXN_FACTORY}配置创建原生NIO或者Netty框架封装的工厂
+     * @return
+     * @throws IOException
+     */
     public static ServerCnxnFactory createFactory() throws IOException {
         String serverCnxnFactoryName = System.getProperty(ZOOKEEPER_SERVER_CNXN_FACTORY);
         if (serverCnxnFactoryName == null) {

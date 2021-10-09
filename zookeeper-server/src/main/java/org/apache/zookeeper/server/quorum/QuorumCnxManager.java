@@ -76,7 +76,7 @@ import org.slf4j.LoggerFactory;
  * maintains one connection for every pair of servers. The tricky part is to
  * guarantee that there is exactly one connection for every pair of servers that
  * are operating correctly and that can communicate over the network.
- *
+ * 这个类实现了通过tcp网络连接进行leader选举功能。他维持了每个端对端的相互连接。
  * If two servers try to start a connection concurrently, then the connection
  * manager uses a very simple tie-breaking mechanism to decide which connection
  * to drop based on the IP addressed of the two parties.
@@ -155,6 +155,7 @@ public class QuorumCnxManager {
 
     /*
      * Reception queue
+     * 接收队列
      */
     public final BlockingQueue<Message> recvQueue;
 
@@ -290,7 +291,7 @@ public class QuorumCnxManager {
         initializeAuth(mySid, authServer, authLearner, quorumCnxnThreadsSize, quorumSaslAuthEnabled);
 
         // Starts listener thread that waits for connection requests
-        listener = new Listener();
+        listener = new Listener();// 开启一个等待连接请求的监听器
         listener.setName("QuorumPeerListener");
     }
 
@@ -417,7 +418,7 @@ public class QuorumCnxManager {
 
             // represents protocol version (in other words - message type)
             dout.writeLong(PROTOCOL_VERSION);
-            dout.writeLong(self.getId());
+            dout.writeLong(self.getId());// 发送本机id给对方,让对方确认连接
             String addr = self.getElectionAddress().getAllAddresses().stream()
                     .map(NetUtils::formatInetAddr).collect(Collectors.joining("|"));
             byte[] addr_bytes = addr.getBytes();
@@ -609,6 +610,7 @@ public class QuorumCnxManager {
     public void toSend(Long sid, ByteBuffer b) {
         /*
          * If sending message to myself, then simply enqueue it (loopback).
+         * 如果发送的是自己消息，直接放入接收队列，因为自己的投票也是过半机制的一张选票
          */
         if (this.mySid == sid) {
             b.position(0);
@@ -650,7 +652,7 @@ public class QuorumCnxManager {
             if (self.isSslQuorum()) {
                 sock = self.getX509Util().createSSLSocket();
             } else {
-                sock = new Socket();
+                sock = new Socket();// zk底层是直接基于java socket进行TPC协议通信(BIO)
             }
             setSockOpts(sock);
             sock.connect(electionAddr.getReachableAddress(), cnxTO);
@@ -1024,7 +1026,7 @@ public class QuorumCnxManager {
                         LOG.info("My election bind port: {}", address.toString());
                         while (!shutdown) {
                             try {
-                                client = serverSocket.accept();
+                                client = serverSocket.accept();// 在此阻塞,等待等待zk节点连接 , (bio阻塞模型)
                                 setSockOpts(client);
                                 LOG.info("Received connection request {}", client.getRemoteSocketAddress());
                                 // Receive and handle the connection request
@@ -1035,7 +1037,7 @@ public class QuorumCnxManager {
                                 if (quorumSaslAuthEnabled) {
                                     receiveConnectionAsync(client);
                                 } else {
-                                    receiveConnection(client);
+                                    receiveConnection(client);// 接收新的连接，进行初始化准备
                                 }
                                 numRetries = 0;
                             } catch (SocketTimeoutException e) {
@@ -1183,7 +1185,7 @@ public class QuorumCnxManager {
                 LOG.error("BufferUnderflowException ", be);
                 return;
             }
-            dout.writeInt(b.capacity());
+            dout.writeInt(b.capacity());// 解决网络的粘包/拆包的问题；所以先写入了数据包长度再发送数据包
             dout.write(b.array());
             dout.flush();
         }
@@ -1335,6 +1337,7 @@ public class QuorumCnxManager {
                     /**
                      * Reads the first int to determine the length of the
                      * message
+                     * 这个与发送数据包协商好数据包格式，都是为了解决粘包/拆包问题；首先先获取数据包长度再获取等长的数据包。
                      */
                     int length = din.readInt();
                     if (length <= 0 || length > PACKETMAXSIZE) {
@@ -1344,7 +1347,7 @@ public class QuorumCnxManager {
                      * Allocates a new ByteBuffer to receive the message
                      */
                     final byte[] msgArray = new byte[length];
-                    din.readFully(msgArray, 0, length);
+                    din.readFully(msgArray, 0, length); // 读取数据包长度为length
                     addToRecvQueue(new Message(ByteBuffer.wrap(msgArray), sid));
                 }
             } catch (Exception e) {

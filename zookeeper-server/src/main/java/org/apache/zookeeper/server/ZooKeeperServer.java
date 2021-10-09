@@ -656,14 +656,17 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
     }
 
+    /**
+     * 真正的启动了
+     */
     public synchronized void startup() {
         if (sessionTracker == null) {
             createSessionTracker();
         }
-        startSessionTracker();
-        setupRequestProcessors();
+        startSessionTracker();// 开启会话管理
+        setupRequestProcessors();// 配置请求处理器
 
-        startRequestThrottler();
+        startRequestThrottler(); // ？？？
 
         registerJMX();
 
@@ -691,6 +694,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     }
 
+    /**
+     * 设置处理请求的责任链；Leader，Follower，Observer都对这个方法进行了重写。
+     */
     protected void setupRequestProcessors() {
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         RequestProcessor syncProcessor = new SyncRequestProcessor(this, finalProcessor);

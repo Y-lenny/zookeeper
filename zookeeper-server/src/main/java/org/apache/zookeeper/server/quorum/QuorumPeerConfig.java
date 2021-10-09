@@ -157,6 +157,7 @@ public class QuorumPeerConfig {
 
     /**
      * Parse a ZooKeeper configuration file
+     * 解析zk的配置文件：zoo.cfg
      * @param path the patch of the configuration file
      * @throws ConfigException error processing configuration
      */

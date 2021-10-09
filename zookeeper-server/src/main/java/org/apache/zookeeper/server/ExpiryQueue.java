@@ -31,6 +31,8 @@ import org.apache.zookeeper.common.Time;
  * ExpiryQueue tracks elements in time sorted fixed duration buckets.
  * It's used by SessionTrackerImpl to expire sessions and NIOServerCnxnFactory
  * to expire connections.
+ * {@link ExpiryQueue} 记录的元素都是按照修正后的时间段桶进行存储的。
+ * 都是使用{@link SessionTrackerImpl} 进行过期session，使用{@link NIOServerCnxnFactory} 过期connection。
  */
 public class ExpiryQueue<E> {
 
@@ -50,6 +52,11 @@ public class ExpiryQueue<E> {
         nextExpirationTime.set(roundToNextInterval(Time.currentElapsedTime()));
     }
 
+    /**
+     * 将会话过期时间转化成心跳时间的整数倍
+     * @param time 过期时间
+     * @return 心跳事件的整数倍
+     */
     private long roundToNextInterval(long time) {
         return (time / expirationInterval + 1) * expirationInterval;
     }
@@ -84,7 +91,7 @@ public class ExpiryQueue<E> {
     public Long update(E elem, int timeout) {
         Long prevExpiryTime = elemMap.get(elem);
         long now = Time.currentElapsedTime();
-        Long newExpiryTime = roundToNextInterval(now + timeout);
+        Long newExpiryTime = roundToNextInterval(now + timeout);// 向上取整
 
         if (newExpiryTime.equals(prevExpiryTime)) {
             // No change, so nothing to update
@@ -92,7 +99,7 @@ public class ExpiryQueue<E> {
         }
 
         // First add the elem to the new expiry time bucket in expiryMap.
-        Set<E> set = expiryMap.get(newExpiryTime);
+        Set<E> set = expiryMap.get(newExpiryTime);// 从原有桶集合中获取桶
         if (set == null) {
             // Construct a ConcurrentHashSet using a ConcurrentHashMap
             set = Collections.newSetFromMap(new ConcurrentHashMap<E, Boolean>());
@@ -103,10 +110,11 @@ public class ExpiryQueue<E> {
                 set = existingSet;
             }
         }
-        set.add(elem);
+        set.add(elem);// 添加到集合中
 
         // Map the elem to the new expiry time. If a different previous
         // mapping was present, clean up the previous expiry bucket.
+        // 添加到新桶后需要移除旧桶的信息
         prevExpiryTime = elemMap.put(elem, newExpiryTime);
         if (prevExpiryTime != null && !newExpiryTime.equals(prevExpiryTime)) {
             Set<E> prevSet = expiryMap.get(prevExpiryTime);
@@ -119,6 +127,7 @@ public class ExpiryQueue<E> {
 
     /**
      * @return milliseconds until next expiration time, or 0 if has already past
+     * 当前距离下一个桶开始时间
      */
     public long getWaitTime() {
         long now = Time.currentElapsedTime();
@@ -143,8 +152,8 @@ public class ExpiryQueue<E> {
 
         Set<E> set = null;
         long newExpirationTime = expirationTime + expirationInterval;
-        if (nextExpirationTime.compareAndSet(expirationTime, newExpirationTime)) {
-            set = expiryMap.remove(expirationTime);
+        if (nextExpirationTime.compareAndSet(expirationTime, newExpirationTime)) {// 更新下一个过期时间
+            set = expiryMap.remove(expirationTime);// 获取过期时间对应的会话集合
         }
         if (set == null) {
             return Collections.emptySet();

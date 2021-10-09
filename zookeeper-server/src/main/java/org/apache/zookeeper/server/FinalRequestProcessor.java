@@ -117,7 +117,7 @@ public class FinalRequestProcessor implements RequestProcessor {
         if (LOG.isTraceEnabled()) {
             ZooTrace.logRequest(LOG, traceMask, 'E', request, "");
         }
-        // 请求处理
+        // 事务请求处理
         ProcessTxnResult rc = zks.processTxn(request);
 
         // ZOOKEEPER-558:

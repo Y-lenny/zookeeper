@@ -282,7 +282,7 @@ public class ZKDatabase {
      */
     public long loadDataBase() throws IOException {
         long startTime = Time.currentElapsedTime();
-        long zxid = snapLog.restore(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
+        long zxid = snapLog.restore(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);// 恢复内存数据
         initialized = true;
         long loadTime = Time.currentElapsedTime() - startTime;
         ServerMetrics.getMetrics().DB_INIT_TIME.add(loadTime);
@@ -634,6 +634,7 @@ public class ZKDatabase {
 
     /**
      * append to the underlying transaction log
+     * 添加到底层的事务日志
      * @param si the request to append
      * @return true if the append was succesfull and false if not
      */
