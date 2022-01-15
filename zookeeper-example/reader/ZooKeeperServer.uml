@@ -53,16 +53,16 @@
       <point x="472.5454545454545" y="212.0" />
       <point x="-54.0" y="14.5" />
     </edge>
-    <edge source="org.apache.zookeeper.server.quorum.ObserverZooKeeperServer" target="org.apache.zookeeper.server.quorum.LearnerZooKeeperServer">
-      <point x="0.0" y="-14.5" />
-      <point x="407.99999999999994" y="291.0" />
-      <point x="406.7272727272727" y="291.0" />
-      <point x="0.0" y="14.5" />
-    </edge>
     <edge source="org.apache.zookeeper.server.ZooKeeperServer" target="org.apache.zookeeper.server.ServerStats.Provider">
       <point x="-42.0" y="-14.5" />
       <point x="730.0" y="54.0" />
       <point x="694.0" y="54.0" />
+      <point x="0.0" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.quorum.ObserverZooKeeperServer" target="org.apache.zookeeper.server.quorum.LearnerZooKeeperServer">
+      <point x="0.0" y="-14.5" />
+      <point x="407.99999999999994" y="291.0" />
+      <point x="406.7272727272727" y="291.0" />
       <point x="0.0" y="14.5" />
     </edge>
     <edge source="org.apache.zookeeper.server.quorum.QuorumZooKeeperServer" target="org.apache.zookeeper.server.ZooKeeperServer">
@@ -78,8 +78,10 @@
       <point x="0.0" y="14.5" />
     </edge>
   </edges>
-  <settings layout="Hierarchic Group" zoom="1.0" x="623.0" y="68.0" />
-  <SelectedNodes />
+  <settings layout="Hierarchic Group" zoom="0.9308836395450568" x="561.5" y="172.5" />
+  <SelectedNodes>
+    <node>org.apache.zookeeper.server.ZooKeeperServer</node>
+  </SelectedNodes>
   <Categories />
   <SCOPE>All</SCOPE>
   <VISIBILITY>private</VISIBILITY>

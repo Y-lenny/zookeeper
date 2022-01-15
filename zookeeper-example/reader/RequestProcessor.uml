@@ -9,8 +9,8 @@
     <node x="1424.0" y="89.0">org.apache.zookeeper.server.quorum.AckRequestProcessor</node>
     <node x="260.0" y="89.0">org.apache.zookeeper.server.quorum.CommitProcessor</node>
     <node x="748.0" y="0.0">org.apache.zookeeper.server.RequestProcessor</node>
-    <node x="448.0" y="89.0">org.apache.zookeeper.server.quorum.Leader.ToBeAppliedRequestProcessor</node>
     <node x="0.0" y="89.0">org.apache.zookeeper.server.quorum.ProposalRequestProcessor</node>
+    <node x="448.0" y="89.0">org.apache.zookeeper.server.quorum.Leader.ToBeAppliedRequestProcessor</node>
   </nodes>
   <notes />
   <edges>
@@ -20,17 +20,17 @@
       <point x="861.1428571428572" y="69.0" />
       <point x="25.142857142857224" y="14.5" />
     </edge>
-    <edge source="org.apache.zookeeper.server.quorum.AckRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
-      <point x="0.0" y="-14.5" />
-      <point x="1524.0" y="49.0" />
-      <point x="911.4285714285714" y="49.0" />
-      <point x="75.42857142857144" y="14.5" />
-    </edge>
     <edge source="org.apache.zookeeper.server.quorum.ProposalRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
       <point x="0.0" y="-14.5" />
       <point x="120.0" y="49.0" />
       <point x="760.5714285714286" y="49.0" />
       <point x="-75.42857142857144" y="14.5" />
+    </edge>
+    <edge source="org.apache.zookeeper.server.quorum.AckRequestProcessor" target="org.apache.zookeeper.server.RequestProcessor">
+      <point x="0.0" y="-14.5" />
+      <point x="1524.0" y="49.0" />
+      <point x="911.4285714285714" y="49.0" />
+      <point x="75.42857142857144" y="14.5" />
     </edge>
     <edge source="org.apache.zookeeper.server.quorum.CommitProcessor" target="org.apache.zookeeper.server.RequestProcessor">
       <point x="0.0" y="-14.5" />
@@ -55,8 +55,10 @@
       <point x="0.0" y="14.5" />
     </edge>
   </edges>
-  <settings layout="Hierarchic Group" zoom="1.0" x="812.0000000000001" y="59.00000000000006" />
-  <SelectedNodes />
+  <settings layout="Hierarchic Group" zoom="0.6472019464720195" x="812.0" y="59.0" />
+  <SelectedNodes>
+    <node>org.apache.zookeeper.server.RequestProcessor</node>
+  </SelectedNodes>
   <Categories />
   <SCOPE>All</SCOPE>
   <VISIBILITY>private</VISIBILITY>
